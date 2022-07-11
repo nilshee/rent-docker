@@ -1,0 +1,10 @@
+# rent-docker
+
+To be able to develope on various machines with the same env we are using docker. The submodules can be used independently
+
+
+# Install and run dev (full rights, because submodules are ssh clones)
+1. `git clone --recurse-submodules git@github.com:nils1323/rent-docker.git`
+2. `docker-compose -f docker-compose.dev.yml build`
+3. `docker-compose -f docker-compose.dev.yml up`
+4. open [localhost:3000](localhost:3000)
