@@ -1,0 +1,6 @@
+[submodule "backend"]
+	path = backend
+	url = git@github.com:nils1323/rent-backend.git
+[submodule "frontend"]
+	path = frontend
+	url = git@github.com:nils1323/rent-frontend.git
