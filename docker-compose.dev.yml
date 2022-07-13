@@ -35,6 +35,6 @@ services:
       - REACT_APP_SITE_NAME=RENT
     stdin_open: true
     volumes:
-      - ./frontend:/app
+      - ./frontend/src:/app/src
     ports: 
       - "3000:3000"
