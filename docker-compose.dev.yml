@@ -29,6 +29,11 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile.react.dev
+    environment:
+      # needed for WSL2 remove on other dev environments
+      - CHOKIDAR_USEPOLLING=true
+      - REACT_APP_SITE_NAME=RENT
+    stdin_open: true
     volumes:
       - ./frontend:/app
     ports: 
