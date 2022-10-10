@@ -1,5 +1,5 @@
 version: "3.9"
-   
+ 
 services:
   db:
     image: postgres
@@ -8,14 +8,18 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     volumes:
-      - ./db-data:/var/lib/postgresql/data/pgdata
+      - ./db-data:/var/lib/postgresql/data
+    networks:
+      - ba_network
   backend:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile.django.dev
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./backend:/code
+    networks:
+      - ba_network
     ports:
       - "8000:8000"
     environment:
@@ -28,15 +32,43 @@ services:
     depends_on:
       - db
   frontend:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile.react.dev
     environment:
       # needed for WSL2 remove on other dev environments
-      - CHOKIDAR_USEPOLLING=true
+      #- CHOKIDAR_USEPOLLING=true
       - REACT_APP_SITE_NAME=RENT
     stdin_open: true
+    networks:
+      - ba_network
     volumes:
       - ./frontend/src:/app/src
-    ports: 
+    ports:
       - "3000:3000"
+  # for access to db and stuff without having to adjust ports
+  vpn: 
+    image: linuxserver/wireguard
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    volumes:
+      - ./wireguard-config:/config
+      - /lib/modules:/lib/modules
+    networks:
+      - ba_network
+    environment:
+      - PEERS=1
+      - INTERNAL_SUBNET=192.168.56.0/24
+      - ALLOWEDIPS=192.168.56.0/24,172.254.56.0/24
+    ports: 
+      - 51820:51820/udp
+    
+networks:
+  ba_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.254.56.0/24
