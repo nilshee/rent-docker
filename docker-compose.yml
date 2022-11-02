@@ -1,0 +1,81 @@
+version: "3.9"
+ 
+services:
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    networks:
+      - ba_network
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.django.dev
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/code
+    networks:
+      - ba_network
+      - behind_traefik
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_TYPE=postgresql
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=db
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=Host(`backend.anonymeanonymiker.de`)
+      - traefik.http.routers.backend.tls.certresolver=lets-encrypt
+      - traefik.http.services.backend.loadbalancer.server.port=8000
+    depends_on:
+      - db
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.vue.dev
+      target: 'develop-stage'
+    ports:
+    - '3000:3000'
+    environment:
+      - VUE_APP_NAME=LBZ-Ausleihe
+      - VUE_APP_API_HOST=https://backend.anonymeanonymiker.de
+    volumes:
+    - './frontend:/app'
+    - '/app/node_modules'
+    command: "npm run serve -- --port=3000 --host=0.0.0.0 --allowed-hosts localhost --allowed-hosts .anonymeanonymiker.de"
+  # for access to db and stuff without having to adjust ports
+  vpn: 
+    image: linuxserver/wireguard
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    volumes:
+      - ./wireguard-config:/config
+      - /lib/modules:/lib/modules
+    networks:
+      - ba_network
+    environment:
+      - PEERS=1, bigcalc
+      - INTERNAL_SUBNET=192.168.56.0/24
+      - ALLOWEDIPS=192.168.56.0/24,172.254.56.0/24
+    ports: 
+      - 51820:51820/udp
+    
+networks:
+  ba_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.254.56.0/24
+  behind_traefik:
+    external: true
