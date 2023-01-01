@@ -1,3 +1,5 @@
 db-data
 wireguard
 wireguard-config
+.env
+docker-compose.yml
