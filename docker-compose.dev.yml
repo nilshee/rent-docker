@@ -2,7 +2,7 @@ version: "3.9"
  
 services:
   db:
-    image: postgres
+    image: postgres:14
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
@@ -20,32 +20,49 @@ services:
       - ./backend:/code
     networks:
       - ba_network
-    ports:
-      - "8000:8000"
+      - behind_traefik
+#    ports:
+#      - "8000:8000"
     environment:
-      - DB_TYPE=postgresql
       - POSTGRES_NAME=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_HOST=db
+      # Scheme is important
+      - FRONTEND_HOST=
+      - API_HOST=
+      - DJANGO_SECRET_KEY='django-insecure--b!nu@qg+l+=5mec_-i2=_4*y8gugl215q*tgg#_b3b6!av8g('
+      # for example django-insecure--b!nu@qg+l+=5mec_-i2=_4*y8gugl215q*tgg#_b3b6!av8g(
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=Host(`BACKEND_HOST`)
+      - traefik.http.routers.backend.tls.certresolver=lets-encrypt
+      - traefik.http.services.backend.loadbalancer.server.port=8000
     depends_on:
       - db
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.react.dev
-    environment:
-      # needed for WSL2 remove on other dev environments
-      #- CHOKIDAR_USEPOLLING=true
-      - REACT_APP_SITE_NAME=RENT
-    stdin_open: true
+      dockerfile: Dockerfile.vue.dev
+      target: 'develop-stage'
     networks:
-      - ba_network
-    volumes:
-      - ./frontend/src:/app/src
+      - behind_traefik
     ports:
-      - "3000:3000"
+    - '3000:3000'
+    environment:
+      - VITE_SITENAME=
+      - VITE_API_HOST=
+    volumes:
+      - './frontend:/app'
+      # node_modules need their on volume otherwise the local and the conainters npm clash
+      - '/app/node_modules'
+    command: "npx vite --host --port 3000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=Host(`host`)
+      - traefik.http.routers.frontend.tls.certresolver=lets-encrypt
+      - traefik.http.services.frontend.loadbalancer.server.port=3000
   # for access to db and stuff without having to adjust ports
   vpn: 
     image: linuxserver/wireguard
@@ -60,7 +77,7 @@ services:
     networks:
       - ba_network
     environment:
-      - PEERS=1
+      - PEERS=client1, client2
       - INTERNAL_SUBNET=192.168.56.0/24
       - ALLOWEDIPS=192.168.56.0/24,172.254.56.0/24
     ports: 
@@ -72,3 +89,5 @@ networks:
     ipam:
       config:
         - subnet: 172.254.56.0/24
+  behind_traefik:
+    external: true
