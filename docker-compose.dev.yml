@@ -4,13 +4,14 @@ services:
   db:
     image: postgres:14
     environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${POSTGRES_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - ./db-data:/var/lib/postgresql/data
     networks:
-      - ba_network
+      ba_network:
+        ipv4_address: 172.254.56.2
   backend:
     build:
       context: .
@@ -19,24 +20,14 @@ services:
     volumes:
       - ./backend:/code
     networks:
-      - ba_network
-      - behind_traefik
-#    ports:
-#      - "8000:8000"
-    environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_HOST=db
-      # Scheme is important
-      - FRONTEND_HOST=
-      - API_HOST=
-      - DJANGO_SECRET_KEY='django-insecure--b!nu@qg+l+=5mec_-i2=_4*y8gugl215q*tgg#_b3b6!av8g('
-      # for example django-insecure--b!nu@qg+l+=5mec_-i2=_4*y8gugl215q*tgg#_b3b6!av8g(
+      ba_network:
+        ipv4_address: 172.254.56.3
+      behind_traefik:
+    env_file:
+      - .env
     labels:
       - traefik.enable=true
-      - traefik.http.routers.backend.rule=Host(`BACKEND_HOST`)
+      - traefik.http.routers.backend.rule=Host(`${BACKEND_HOST}`)
       - traefik.http.routers.backend.tls.certresolver=lets-encrypt
       - traefik.http.services.backend.loadbalancer.server.port=8000
     depends_on:
@@ -45,24 +36,62 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.vue.dev
-      target: 'develop-stage'
     networks:
       - behind_traefik
-    ports:
-    - '3000:3000'
     environment:
-      - VITE_SITENAME=
-      - VITE_API_HOST=
+      - VITE_SITENAME=${SITE_NAME}
+      - VITE_API_HOST=${API_HOST}
     volumes:
-      - './frontend:/app'
-      # node_modules need their on volume otherwise the local and the conainters npm clash
-      - '/app/node_modules'
-    command: "npx vite --host --port 3000"
+    - './frontend:/app'
+    # npm install is needed to populate /app/node_modules after startup of the container
+    command: "bash -c 'npm install; npx vite --host --port 3000'"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.frontend.rule=Host(`host`)
+      - traefik.http.routers.frontend.rule=Host(`${FRONTEND_HOST}`)
       - traefik.http.routers.frontend.tls.certresolver=lets-encrypt
       - traefik.http.services.frontend.loadbalancer.server.port=3000
+  redis:
+    restart: unless-stopped 
+    image: redis
+    expose:
+      - 6379
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.4
+  celery-worker: 
+    build:
+      context: .
+      dockerfile: Dockerfile.django.dev
+    restart: unless-stopped
+    volumes:
+      - ./backend:/code
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.5
+    env_file:
+      - .env
+    entrypoint: 'celery -A backend worker --loglevel=info'
+    depends_on:
+      - backend
+      - redis
+  celery-beat: 
+    build:
+      context: .
+      dockerfile: Dockerfile.django.dev
+    restart: unless-stopped
+    volumes:
+      - ./backend:/code
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.6
+    env_file:
+      - .env
+    entrypoint: 'celery -A backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler'
+    depends_on:
+      - db
+      - celery-worker
+      - redis
+
   # for access to db and stuff without having to adjust ports
   vpn: 
     image: linuxserver/wireguard
@@ -75,9 +104,10 @@ services:
       - ./wireguard-config:/config
       - /lib/modules:/lib/modules
     networks:
-      - ba_network
+      ba_network:
+        ipv4_address: 172.254.56.7
     environment:
-      - PEERS=client1, client2
+      - PEERS=1, bigcalc
       - INTERNAL_SUBNET=192.168.56.0/24
       - ALLOWEDIPS=192.168.56.0/24,172.254.56.0/24
     ports: 
