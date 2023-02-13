@@ -7,4 +7,9 @@ COPY backend/requirements.txt ./
 
 RUN python -m pip install -r requirements.txt
 
+RUN apt update
+RUN apt install -y python3-pygraphviz
+# reduce imagesize by deleting apt cache after image creation
+RUN rm -rf /var/lib/apt/lists/*
+
 WORKDIR /code
