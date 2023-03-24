@@ -12,6 +12,7 @@ services:
     networks:
       ba_network:
         ipv4_address: 172.254.56.2
+    restart: unless-stopped
   backend:
     build:
       context: .
@@ -32,6 +33,7 @@ services:
       - traefik.http.services.backend.loadbalancer.server.port=8000
     depends_on:
       - db
+    restart: unless-stopped
   frontend:
     build:
       context: .
@@ -50,6 +52,7 @@ services:
       - traefik.http.routers.frontend.rule=Host(`${FRONTEND_HOST}`)
       - traefik.http.routers.frontend.tls.certresolver=lets-encrypt
       - traefik.http.services.frontend.loadbalancer.server.port=3000
+    restart: unless-stopped
   redis:
     restart: unless-stopped 
     image: redis
@@ -112,6 +115,7 @@ services:
       - ALLOWEDIPS=192.168.56.0/24,172.254.56.0/24
     ports: 
       - 51820:51820/udp
+    restart: unless-stopped
     
 networks:
   ba_network:
