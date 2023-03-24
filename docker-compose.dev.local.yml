@@ -1,0 +1,144 @@
+version: "3.9"
+ 
+services:
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_DB=${POSTGRES_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    ports: 
+    # for direct local access
+      - "127.0.0.1:5432:5432"
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.2
+    restart: unless-stopped
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.django.dev
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/code
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.3
+      behind_local_traefik:
+    environment:
+      - FRONTEND_HOST=localhost 
+      - BACKEND_HOST=localhost
+      - API_HOST=https://localhost/api
+    env_file:
+      - .env
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=(Host(`localhost`)&&(PathPrefix(`/api`)||PathPrefix(`/media`)||PathPrefix(`/static`)))
+      - traefik.http.routers.backend.tls=true
+      - traefik.http.services.backend.loadbalancer.server.port=8000
+    depends_on:
+      - db
+    restart: unless-stopped
+    ports: 
+    # for direct local access
+      - "127.0.0.1:8000:8000"
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.vue.dev
+    networks:
+      - behind_local_traefik
+    environment:
+      - VITE_SITENAME=${SITE_NAME}
+      - VITE_API_HOST=https://localhost/api
+    volumes:
+    - './frontend:/app'
+    # npm install is needed to populate /app/node_modules after startup of the container
+    command: "bash -c 'npm install; npx vite --host --port 3000'"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=Host(`localhost`)
+      - traefik.http.routers.frontend.tls=true
+      - traefik.http.services.frontend.loadbalancer.server.port=3000
+    restart: unless-stopped
+  redis:
+    restart: unless-stopped 
+    image: redis
+    expose:
+      - 6379
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.4
+  celery-worker: 
+    build:
+      context: .
+      dockerfile: Dockerfile.django.dev
+    restart: unless-stopped
+    volumes:
+      - ./backend:/code
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.5
+    env_file:
+      - .env
+    entrypoint: 'celery -A backend worker --loglevel=info'
+    depends_on:
+      - backend
+      - redis
+  celery-beat: 
+    build:
+      context: .
+      dockerfile: Dockerfile.django.dev
+    restart: unless-stopped
+    volumes:
+      - ./backend:/code
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.6
+    env_file:
+      - .env
+    entrypoint: 'celery -A backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler'
+    depends_on:
+      - db
+      - celery-worker
+      - redis
+
+#only start it with this traefik config if there is no other traefik instance running on your system
+  traefik:
+    image: "traefik:v2.9"
+    restart: unless-stopped
+    command:
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entryPoints.web.http.redirections.entryPoint.permanent=false"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.websecure.http.tls=true"
+      - "--providers.docker.network=behind_local_traefik"
+    ports:
+      - "127.0.0.1:443:443"
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:8080:8080"
+    volumes: 
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks: 
+      behind_local_traefik:
+      ba_network:
+        ipv4_address: 172.254.56.7
+
+
+networks:
+  ba_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.254.56.0/24
+  behind_local_traefik:
