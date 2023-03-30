@@ -1,0 +1,124 @@
+version: "3.9"
+ 
+services:
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_DB=${POSTGRES_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.2
+    restart: unless-stopped
+  # we need a nginx server to serve staticfiles and proxy requests to the unicorn worker
+  backend_nginx_server:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend-nginx.prod
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=Host(`${BACKEND_HOST}`)&&PathPrefix(`/django-admin`,`/media`,`/django-static`,`/api`)
+      - traefik.http.routers.backend.tls.certresolver=lets-encrypt
+      - traefik.http.services.backend.loadbalancer.server.port=80
+      - traefik.docker.network=behind_traefik
+    volumes:
+      - ./backend/media:/code/media
+      - ./backend/staticfiles:/code/staticfiles
+    networks:
+      behind_traefik:
+      backend_proxy_net:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.django.prod
+    entrypoint: /build_files/django_startup.sh
+    volumes:
+      - ./backend/media:/code/media
+      - ./backend/staticfiles:/code/staticfiles
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.3
+      backend_proxy_net:
+    env_file:
+      - .env
+    environment:
+      - DEBUG=false
+    depends_on:
+      - db
+    restart: unless-stopped
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.vue.prod
+      args:
+        - VITE_SITENAME=${SITE_NAME}
+        - VITE_API_HOST=${API_HOST}
+    networks:
+      - behind_traefik
+    environment:
+      - VITE_SITENAME=${SITE_NAME}
+      - VITE_API_HOST=${API_HOST}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=Host(`${FRONTEND_HOST}`)
+      - traefik.http.routers.frontend.tls.certresolver=lets-encrypt
+      - traefik.http.services.frontend.loadbalancer.server.port=80
+    restart: unless-stopped
+  redis:
+    restart: unless-stopped 
+    image: redis
+    expose:
+      - 6379
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.4
+  celery-worker: 
+    build:
+      context: .
+      dockerfile: Dockerfile.django.prod
+    restart: unless-stopped
+    volumes:
+      - ./backend/media:/code/media
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.5
+    env_file:
+      - .env
+    entrypoint: /build_files/celery_worker.sh
+    environment:
+      - DEBUG=false
+    depends_on:
+      - backend
+      - redis
+  celery-beat: 
+    build:
+      context: .
+      dockerfile: Dockerfile.django.prod
+    restart: unless-stopped
+    volumes:
+      - ./backend/media:/code/media
+    networks:
+      ba_network:
+        ipv4_address: 172.254.56.6
+    env_file:
+      - .env
+    entrypoint: /build_files/celery_beat.sh
+    environment:
+      - DEBUG=false
+    depends_on:
+      - db
+      - celery-worker
+      - redis
+
+networks:
+  ba_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.254.56.0/24
+  behind_traefik:
+    external: true
+  backend_proxy_net:

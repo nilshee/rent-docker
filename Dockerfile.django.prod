@@ -1,0 +1,18 @@
+# Inspiration taken from https://saasitive.com/tutorial/django-celery-redis-postgres-docker-compose/
+FROM python:3-alpine
+
+RUN apk update && apk add python3-dev gcc libc-dev
+
+WORKDIR /code
+
+RUN pip install --upgrade pip
+RUN pip install gunicorn
+ADD ./backend /code
+RUN pip install -r requirements.txt
+
+ADD ./build_files /build_files
+
+RUN chmod +x /build_files/django_startup.sh
+RUN chmod +x /build_files/celery_worker.sh
+RUN chmod +x /build_files/celery_beat.sh
+
