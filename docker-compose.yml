@@ -30,6 +30,7 @@ services:
     networks:
       behind_traefik:
       backend_proxy_net:
+    restart: unless-stopped
   backend:
     build:
       context: .
