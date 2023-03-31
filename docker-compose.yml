@@ -1,7 +1,10 @@
 version: "3.9"
  
 services:
-  db:
+  db:        
+    logging:
+        options:
+            max-size: "100m"
     image: postgres:14
     environment:
       - POSTGRES_DB=${POSTGRES_NAME}
@@ -14,7 +17,10 @@ services:
         ipv4_address: 172.254.56.2
     restart: unless-stopped
   # we need a nginx server to serve staticfiles and proxy requests to the unicorn worker
-  backend_nginx_server:
+  backend_nginx_server:        
+    logging:
+        options:
+            max-size: "100m"
     build:
       context: .
       dockerfile: Dockerfile.backend-nginx.prod
@@ -32,7 +38,10 @@ services:
       behind_traefik:
       backend_proxy_net:
     restart: unless-stopped
-  backend:
+  backend:        
+    logging:
+        options:
+            max-size: "100m"
     build:
       context: .
       dockerfile: Dockerfile.django.prod
@@ -51,7 +60,10 @@ services:
     depends_on:
       - db
     restart: unless-stopped
-  frontend:
+  frontend:        
+    logging:
+        options:
+            max-size: "100m"
     build:
       context: .
       dockerfile: Dockerfile.vue.prod
@@ -70,7 +82,10 @@ services:
       - traefik.http.routers.frontend.tls=true
       - traefik.http.services.frontend.loadbalancer.server.port=80
     restart: unless-stopped
-  redis:
+  redis:        
+    logging:
+        options:
+            max-size: "100m"
     restart: unless-stopped 
     image: redis
     expose:
@@ -78,7 +93,10 @@ services:
     networks:
       ba_network:
         ipv4_address: 172.254.56.4
-  celery-worker: 
+  celery-worker:         
+    logging:
+        options:
+            max-size: "100m"
     build:
       context: .
       dockerfile: Dockerfile.django.prod
@@ -96,7 +114,10 @@ services:
     depends_on:
       - backend
       - redis
-  celery-beat: 
+  celery-beat:         
+    logging:
+        options:
+            max-size: "100m"
     build:
       context: .
       dockerfile: Dockerfile.django.prod
