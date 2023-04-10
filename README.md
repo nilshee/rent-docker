@@ -4,7 +4,7 @@ To be able to develope on various machines with the same env we are using docker
 
 
 # Install and run dev
-1. `git clone --recurse-submodules git@github.com:nils1323/rent-docker.git`
+1. `git clone --recurse-submodules git@github.com:rwth-medialab/rent-docker.git`
 2. `docker-compose -f docker-compose.dev.yml build`
 3. `docker-compose -f docker-compose.dev.yml up`
 4. open [localhost:3000](http://localhost:3000)
