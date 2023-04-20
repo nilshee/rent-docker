@@ -35,7 +35,7 @@ services:
       - .env
     labels:
       - traefik.enable=true
-      - traefik.http.routers.backend.rule=(Host(`localhost`)&&(PathPrefix(`/api`)||PathPrefix(`/media`)||PathPrefix(`/static`)))
+      - traefik.http.routers.backend.rule=Host(`localhost`)&&PathPrefix(`/django-admin`,`/media`,`/django-static`,`/api`)
       - traefik.http.routers.backend.tls=true
       - traefik.http.services.backend.loadbalancer.server.port=8000
     depends_on:
