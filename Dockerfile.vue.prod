@@ -1,5 +1,5 @@
 # inspiration taken from https://medium.com/@jwdobken/vue-with-docker-initialize-develop-and-build-51fad21ad5e6
-FROM node:17 as develop-stage
+FROM node:18 as develop-stage
 ARG VITE_API_HOST
 ARG VITE_SITENAME
 WORKDIR /app
