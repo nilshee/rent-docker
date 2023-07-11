@@ -107,7 +107,7 @@ services:
 
 #only start it with this traefik config if there is no other traefik instance running on your system
   traefik:
-    image: "traefik:v2.9"
+    image: "traefik:v2.10"
     restart: unless-stopped
     command:
       - "--log.level=INFO"

@@ -140,7 +140,7 @@ services:
 # only start it with this traefik config if there is no other traefik instance running on your system
 # Uncomment if you need to test the production builds locally. You also need to uncomment the labels of the nginx proxies and comment the certresolver lines
 # traefik:
-#   image: "traefik:v2.9"
+#   image: "traefik:v2.10"
 #   restart: unless-stopped
 #   command:
 #     - "--log.level=INFO"
