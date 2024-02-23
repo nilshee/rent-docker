@@ -1,6 +1,0 @@
-[submodule "backend"]
-	path = backend
-	url = git@github.com:rwth-medialab/rent-backend.git
-[submodule "frontend"]
-	path = frontend
-	url = git@github.com:rwth-medialab/rent-frontend.git
