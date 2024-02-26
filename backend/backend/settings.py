@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from datetime import datetime
 from django.utils import timezone
+from dotenv import load_dotenv
 import locale
 """
 Django settings for backend project.
@@ -16,6 +17,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

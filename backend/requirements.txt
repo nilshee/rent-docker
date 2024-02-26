@@ -14,3 +14,4 @@ pydotplus
 requests
 celery[redis]
 django_celery_beat
+python-dotenv
