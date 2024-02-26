@@ -24,11 +24,16 @@ class Priority(models.Model):
     def __str__(self) -> str:
         return self.name + ": " + str(self.prio)
 
-
 class Profile(models.Model):
     """
     extension of User model for addtitional information. since we check those permissions through here we create them here. (Automatically created through the meta tag)
     """
+    def highest_priority(self):
+        """
+        helper function since we need the highest priority for the default value. Default values are evaluated at the time of the model creation.
+        """
+        return Priority.objects.get(prio=99).id
+
     class Meta:
         permissions = [
             ("inventory_editing",
@@ -39,7 +44,7 @@ class Profile(models.Model):
         User, on_delete=models.CASCADE, blank=True, related_name="profile")
     # Since people are already somewhat authenticated through their email allow them to lend even without validation.On authorization validation a corresponding Prio field must be set
     prio = models.ForeignKey(
-        Priority, on_delete=models.SET_NULL, null=True, blank=True, default=Priority.objects.get(prio=99).id)
+        Priority, on_delete=models.SET_NULL, null=True, blank=True, default=highest_priority)
     newsletter = models.BooleanField(
         verbose_name='newsletter signup', default=False, blank=True)
     automatically_verifiable = models.BooleanField(verbose_name="tells if someone is automatically verifiable, set to false if it fails", default=True, blank=True)
