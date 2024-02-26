@@ -3,7 +3,10 @@ from django.db.models.signals import post_migrate
 
 
 
-def populate_models(sender, **kwargs):
+def populate_models(sender:AppConfig, **kwargs)-> None:
+    """
+    Populates default settings, priorities, and texts in the database.
+    """
     from django_celery_beat.models import PeriodicTask
     from django_celery_beat.models import IntervalSchedule
     import logging
@@ -77,13 +80,6 @@ def populate_models(sender, **kwargs):
         logger.info(f"creating onpremise_starttime with {'10:30'} in db")
         models.Settings.objects.create(type='onpremise_starttime', value='10:30', public=True)
 
-    """
-    populate some defaults, for example the default priority class, or default texts
-    """
-    if not models.Priority.objects.filter(prio=99).exists():
-        logger.info(f"creating unverified priority in db")
-        models.Priority.objects.create(
-            prio=99, name="unverified", description="Default renting class, should be the one with the shortest renting durations")
 
     if not models.Priority.objects.filter(prio=50, name="automatically verified").exists():
         logger.info(f"creating auto verified Priority in db")
