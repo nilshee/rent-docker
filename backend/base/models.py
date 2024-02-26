@@ -28,11 +28,13 @@ class Profile(models.Model):
     """
     extension of User model for addtitional information. since we check those permissions through here we create them here. (Automatically created through the meta tag)
     """
-    def highest_priority(self):
+    def highest_priority():
         """
         helper function since we need the highest priority for the default value. Default values are evaluated at the time of the model creation.
         """
-        return Priority.objects.get(prio=99).id
+
+        instance, _ = Priority.objects.get_or_create(prio=99, name="unverified", description="Default renting class, should be the one with the shortest renting durations")
+        return instance.id
 
     class Meta:
         permissions = [
