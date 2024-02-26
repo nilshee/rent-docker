@@ -5,7 +5,10 @@ services:
     logging:
         options:
             max-size: "100m"
-    image: postgres:14
+    build:
+      context: .
+      dockerfile: ./build_files/postgres/Dockerfile
+    image: custom-postgres:14
     environment:
       - POSTGRES_DB=${POSTGRES_NAME}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -38,7 +41,7 @@ services:
       behind_traefik:
       backend_proxy_net:
     restart: unless-stopped
-  backend:        
+  rent-backend:        
     logging:
         options:
             max-size: "100m"
@@ -112,7 +115,7 @@ services:
     environment:
       - DEBUG=false
     depends_on:
-      - backend
+      - rent-backend
       - redis
   celery-beat:         
     logging:
