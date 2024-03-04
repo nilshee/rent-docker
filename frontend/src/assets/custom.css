@@ -1,0 +1,36 @@
+/* remove highlihting of to-buttons with no-active class */
+.no-active > .v-btn__overlay {
+  opacity: inherit !important;
+  background-color: inherit !important;
+}
+
+/* fixes veutifys css reset apply editor styles  https://github.com/vueup/vue-quill/tree/master/packages/vue-quill/src/assets*/
+
+pre.ql-syntax {
+  background-color: #23241f !important;
+  color: #f8f8f2;
+  overflow: visible;
+  border-radius: 3px;
+  white-space: pre-wrap;
+  padding: 5px 10px !important;
+}
+
+blockquote {
+  border-left: 4px solid #ccc;
+  background-color: aliceblue;
+  margin-bottom: 5px;
+  margin-top: 5px !important;
+  margin-left: 16px !important;
+  padding-left: 16px !important;
+}
+
+
+/* scoped css did nothing -> here it works img in  */
+.frontpage img {
+  width: 100% ;
+}
+
+/* frontpage */
+.w-32 {
+  width: 32%;
+}

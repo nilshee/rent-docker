@@ -12,6 +12,9 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - ./db-data:/var/lib/postgresql/data
+    ports: 
+    # for direct local access
+      - "127.0.0.1:5432:5432"
     networks:
       ba_network:
         ipv4_address: 172.254.56.2
@@ -20,40 +23,47 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.django.dev
-    command: python manage.py runserver 0.0.0.0:8000
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/code
     networks:
       ba_network:
         ipv4_address: 172.254.56.3
-      behind_traefik:
+      behind_local_traefik:
+    environment:
+      - FRONTEND_HOST=localhost 
+      - BACKEND_HOST=localhost
+      - API_HOST=https://localhost/api
     env_file:
       - .env
     labels:
       - traefik.enable=true
-      - traefik.http.routers.backend.rule=Host(`${BACKEND_HOST}`)
-      - traefik.http.routers.backend.tls.certresolver=lets-encrypt
+      - traefik.http.routers.backend.rule=Host(`localhost`)&&PathPrefix(`/django-admin`,`/media`,`/django-static`,`/api`)
+      - traefik.http.routers.backend.tls=true
       - traefik.http.services.backend.loadbalancer.server.port=8000
     depends_on:
       - db
     restart: unless-stopped
+    ports: 
+    # for direct local access
+      - "127.0.0.1:8000:8000"
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.vue.dev
     networks:
-      - behind_traefik
+      - behind_local_traefik
     environment:
       - VITE_SITENAME=${SITE_NAME}
-      - VITE_API_HOST=${API_HOST}
+      - VITE_API_HOST=https://localhost/api
     volumes:
     - './frontend:/app'
     # npm install is needed to populate /app/node_modules after startup of the container
     command: "bash -c 'npm install; npx vite --host --port 3000'"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.frontend.rule=Host(`${FRONTEND_HOST}`)
-      - traefik.http.routers.frontend.tls.certresolver=lets-encrypt
+      - traefik.http.routers.frontend.rule=Host(`localhost`)
+      - traefik.http.routers.frontend.tls=true
       - traefik.http.services.frontend.loadbalancer.server.port=3000
     restart: unless-stopped
   redis:
@@ -98,33 +108,40 @@ services:
       - celery-worker
       - redis
 
-  # for access to db and stuff without having to adjust ports
-  vpn: 
-    image: linuxserver/wireguard
-    sysctls:
-      - net.ipv4.conf.all.src_valid_mark=1
-    cap_add:
-      - NET_ADMIN
-      - SYS_ADMIN
-    volumes:
-      - ./wireguard-config:/config
-      - /lib/modules:/lib/modules
-    networks:
+#only start it with this traefik config if there is no other traefik instance running on your system
+  traefik:
+    image: "traefik:v2.10"
+    restart: unless-stopped
+    command:
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entryPoints.web.http.redirections.entryPoint.permanent=false"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.websecure.http.tls=true"
+      - "--providers.docker.network=behind_local_traefik"
+    ports:
+      - "127.0.0.1:443:443"
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:8080:8080"
+    volumes: 
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks: 
+      behind_local_traefik:
       ba_network:
         ipv4_address: 172.254.56.7
-    environment:
-      - PEERS=1, bigcalc
-      - INTERNAL_SUBNET=192.168.56.0/24
-      - ALLOWEDIPS=192.168.56.0/24,172.254.56.0/24
-    ports: 
-      - 51820:51820/udp
-    restart: unless-stopped
-    
+
+
 networks:
   ba_network:
     driver: bridge
     ipam:
       config:
         - subnet: 172.254.56.0/24
-  behind_traefik:
-    external: true
+  behind_local_traefik:
