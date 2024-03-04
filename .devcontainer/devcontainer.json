@@ -32,7 +32,7 @@
                 "Vue.vscode-typescript-vue-plugin"
 			]
 		}
-	}
+	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -45,4 +45,7 @@
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
+
+	// install pip requirements and node packages
+	"postCreateCommand": "cd backend && pip install -r requirements.txt --break-system-packages && cd ../frontend && npm install"
 }
