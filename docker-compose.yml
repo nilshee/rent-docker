@@ -29,10 +29,10 @@ services:
       dockerfile: Dockerfile.backend-nginx.prod
     labels:
       - traefik.enable=true
-      - traefik.http.routers.backend.rule=Host(`${BACKEND_HOST}`)&&PathPrefix(`/django-admin`,`/media`,`/django-static`,`/api`)
-      - traefik.http.routers.backend.tls.certresolver=lets-encrypt
-      - traefik.http.routers.backend.tls=true
-      - traefik.http.services.backend.loadbalancer.server.port=80
+      - traefik.http.routers.rent-backend.rule=Host(`${BACKEND_HOST}`)&&PathPrefix(`/django-admin`,`/media`,`/django-static`,`/api`)
+      - traefik.http.routers.rent-backend.tls.certresolver=lets-encrypt
+      - traefik.http.routers.rent-backend.tls=true
+      - traefik.http.services.rent-backend.loadbalancer.server.port=80
       - traefik.docker.network=behind_traefik
     volumes:
       - ./backend/media:/code/media
@@ -80,10 +80,10 @@ services:
       - VITE_API_HOST=${API_HOST}
     labels:
       - traefik.enable=true
-      - traefik.http.routers.frontend.rule=Host(`${FRONTEND_HOST}`)
-      - traefik.http.routers.frontend.tls.certresolver=lets-encrypt
-      - traefik.http.routers.frontend.tls=true
-      - traefik.http.services.frontend.loadbalancer.server.port=80
+      - traefik.http.routers.rent-frontend.rule=Host(`${FRONTEND_HOST}`)
+      - traefik.http.routers.rent-frontend.tls.certresolver=lets-encrypt
+      - traefik.http.routers.rent-frontend.tls=true
+      - traefik.http.services.rent-frontend.loadbalancer.server.port=80
     restart: unless-stopped
   redis:        
     logging:
